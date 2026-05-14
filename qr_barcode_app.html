@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>QR & Barras App</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:#1a202c;min-height:100vh}
+  header{background:#fff;border-bottom:2px solid #e2e8f0;padding:16px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+  header h1{font-size:1.2rem;font-weight:700;color:#2d3748}
+  header span{font-size:1.5rem}
+  .tabs{display:flex;background:#fff;border-bottom:2px solid #e2e8f0;position:sticky;top:61px;z-index:99}
+  .tab{flex:1;padding:14px;text-align:center;cursor:pointer;font-weight:600;font-size:.9rem;color:#718096;border-bottom:3px solid transparent;transition:all .2s}
+  .tab.active{color:#4f46e5;border-bottom-color:#4f46e5}
+  .tab:hover:not(.active){background:#f7fafc}
+  .page{display:none;padding:20px;max-width:600px;margin:0 auto}
+  .page.active{display:block}
+  .card{background:#fff;border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  .card h2{font-size:1rem;font-weight:700;color:#2d3748;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .type-toggle{display:flex;gap:8px;margin-bottom:16px}
+  .type-btn{flex:1;padding:10px;border:2px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;font-weight:600;font-size:.85rem;color:#718096;transition:all .2s}
+  .type-btn.active{border-color:#4f46e5;background:#eef2ff;color:#4f46e5}
+  label{display:block;font-size:.85rem;font-weight:600;color:#4a5568;margin-bottom:6px}
+  input,select,textarea{width:100%;padding:11px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:.9rem;outline:none;transition:border .2s;font-family:inherit}
+  input:focus,select:focus,textarea:focus{border-color:#4f46e5}
+  textarea{resize:vertical;min-height:80px}
+  .btn{width:100%;padding:13px;border:none;border-radius:10px;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .2s;margin-top:12px}
+  .btn-primary{background:#4f46e5;color:#fff}
+  .btn-primary:hover{background:#4338ca}
+  .btn-success{background:#10b981;color:#fff}
+  .btn-success:hover{background:#059669}
+  .btn-outline{background:#fff;color:#4f46e5;border:2px solid #4f46e5}
+  .btn-outline:hover{background:#eef2ff}
+  .btn-danger{background:#ef4444;color:#fff}
+  .btn-danger:hover{background:#dc2626}
+  .result-box{text-align:center;padding:24px;background:#f7fafc;border-radius:12px;margin-top:16px;display:none}
+  .result-box.show{display:block}
+  #qr-output canvas,#qr-output img{margin:0 auto;display:block;border-radius:8px}
+  #barcode-output{display:block;margin:0 auto;max-width:100%}
+  .format-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .scanner-box{border-radius:12px;overflow:hidden;background:#000;margin-bottom:12px}
+  #reader{width:100%}
+  .scan-result{background:#ecfdf5;border:2px solid #10b981;border-radius:10px;padding:14px;margin-top:12px;display:none}
+  .scan-result.show{display:flex;align-items:flex-start;gap:10px}
+  .scan-result .icon{font-size:1.4rem;flex-shrink:0}
+  .scan-result .text{word-break:break-all;font-size:.9rem}
+  .scan-result .text strong{display:block;margin-bottom:4px;color:#065f46}
+  .upload-area{border:2px dashed #cbd5e0;border-radius:12px;padding:30px;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa}
+  .upload-area:hover{border-color:#4f46e5;background:#eef2ff}
+  .upload-area input{display:none}
+  .upload-area p{color:#718096;font-size:.9rem;margin-top:8px}
+  .upload-area .icon{font-size:2.5rem}
+  .tip{background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 14px;border-radius:0 8px 8px 0;font-size:.82rem;color:#1e40af;margin-bottom:14px}
+  .badge{display:inline-block;background:#eef2ff;color:#4f46e5;border-radius:6px;padding:2px 8px;font-size:.75rem;font-weight:700;margin-left:6px}
+  #copy-btn{margin-top:8px}
+  .divider{text-align:center;color:#a0aec0;font-size:.8rem;margin:14px 0;position:relative}
+  .divider::before,.divider::after{content:'';position:absolute;top:50%;width:42%;height:1px;background:#e2e8f0}
+  .divider::before{left:0}.divider::after{right:0}
+</style>
+</head>
+<body>
+
+<header>
+  <span>📊</span>
+  <h1>QR & Códigos de Barras</h1>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="showPage('gen')">⚡ Generar</div>
+  <div class="tab" onclick="showPage('read')">📷 Leer</div>
+</div>
+
+<!-- GENERAR -->
+<div class="page active" id="page-gen">
+  <div class="card">
+    <h2>📌 Tipo de código</h2>
+    <div class="type-toggle">
+      <button class="type-btn active" id="tb-qr" onclick="setType('qr')">QR Code</button>
+      <button class="type-btn" id="tb-bar" onclick="setType('bar')">Código de Barras</button>
+    </div>
+
+    <!-- QR OPTIONS -->
+    <div id="qr-options">
+      <label>Datos a codificar</label>
+      <textarea id="qr-input" placeholder="Texto, URL, número, lo que quieras..."></textarea>
+      <div class="format-row" style="margin-top:12px">
+        <div>
+          <label>Tamaño (px)</label>
+          <input type="number" id="qr-size" value="200" min="100" max="500"/>
+        </div>
+        <div>
+          <label>Color</label>
+          <input type="color" id="qr-color" value="#000000" style="height:43px;padding:4px"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- BARCODE OPTIONS -->
+    <div id="bar-options" style="display:none">
+      <label>Datos a codificar</label>
+      <input type="text" id="bar-input" placeholder="Texto o número..."/>
+      <div class="format-row" style="margin-top:12px">
+        <div>
+          <label>Formato</label>
+          <select id="bar-format">
+            <option value="CODE128">CODE128 (cualquier texto)</option>
+            <option value="EAN13">EAN-13 (13 dígitos)</option>
+            <option value="EAN8">EAN-8 (8 dígitos)</option>
+            <option value="UPC">UPC-A (12 dígitos)</option>
+            <option value="CODE39">CODE39</option>
+            <option value="ITF14">ITF-14</option>
+          </select>
+        </div>
+        <div>
+          <label>Color</label>
+          <input type="color" id="bar-color" value="#000000" style="height:43px;padding:4px"/>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <label><input type="checkbox" id="bar-text" checked style="width:auto;margin-right:6px"/>Mostrar texto debajo</label>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="generate()">✨ Generar Código</button>
+  </div>
+
+  <!-- RESULTADO -->
+  <div class="card result-box" id="result-box">
+    <h2 id="result-title">🎉 ¡Código generado!</h2>
+    <div id="qr-output"></div>
+    <svg id="barcode-output"></svg>
+    <button class="btn btn-success" onclick="downloadCode()" style="margin-top:16px">⬇️ Descargar imagen</button>
+  </div>
+</div>
+
+<!-- LEER -->
+<div class="page" id="page-read">
+  <div class="card">
+    <h2>🎯 Modo de lectura</h2>
+    <div class="type-toggle">
+      <button class="type-btn active" id="rb-cam" onclick="setReadMode('cam')">📷 Cámara</button>
+      <button class="type-btn" id="rb-img" onclick="setReadMode('img')">🖼️ Imagen</button>
+    </div>
+
+    <!-- CÁMARA -->
+    <div id="read-cam">
+      <div class="tip">💡 En celular: usa la cámara trasera para mejores resultados. Acepta los permisos cuando el navegador los solicite.</div>
+      <div class="scanner-box">
+        <div id="reader"></div>
+      </div>
+      <button class="btn btn-primary" id="scan-btn" onclick="toggleScan()">▶️ Iniciar escaneo</button>
+      <button class="btn btn-danger" id="stop-btn" onclick="stopScan()" style="display:none;margin-top:8px">⏹️ Detener</button>
+    </div>
+
+    <!-- IMAGEN -->
+    <div id="read-img" style="display:none">
+      <div class="upload-area" onclick="document.getElementById('img-upload').click()">
+        <input type="file" id="img-upload" accept="image/*" onchange="readFromImage(event)"/>
+        <div class="icon">📂</div>
+        <p>Toca para seleccionar una imagen</p>
+        <p style="font-size:.78rem;margin-top:4px;color:#a0aec0">JPG, PNG, GIF, WebP</p>
+      </div>
+    </div>
+
+    <!-- RESULTADO LECTURA -->
+    <div class="scan-result" id="scan-result">
+      <div class="icon">✅</div>
+      <div class="text">
+        <strong>Código detectado:</strong>
+        <span id="scan-text"></span>
+        <button class="btn btn-outline" id="copy-btn" onclick="copyResult()" style="margin-top:10px;padding:8px">📋 Copiar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentType = 'qr';
+let currentReadMode = 'cam';
+let scanner = null;
+let scanning = false;
+
+function showPage(p) {
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  event.target.classList.add('active');
+  if (p !== 'read' && scanning) stopScan();
+}
+
+function setType(t) {
+  currentType = t;
+  document.getElementById('tb-qr').classList.toggle('active', t === 'qr');
+  document.getElementById('tb-bar').classList.toggle('active', t === 'bar');
+  document.getElementById('qr-options').style.display = t === 'qr' ? 'block' : 'none';
+  document.getElementById('bar-options').style.display = t === 'bar' ? 'block' : 'none';
+  document.getElementById('result-box').classList.remove('show');
+}
+
+function setReadMode(m) {
+  currentReadMode = m;
+  document.getElementById('rb-cam').classList.toggle('active', m === 'cam');
+  document.getElementById('rb-img').classList.toggle('active', m === 'img');
+  document.getElementById('read-cam').style.display = m === 'cam' ? 'block' : 'none';
+  document.getElementById('read-img').style.display = m === 'img' ? 'block' : 'none';
+  if (m !== 'cam' && scanning) stopScan();
+  document.getElementById('scan-result').classList.remove('show');
+}
+
+function generate() {
+  const box = document.getElementById('result-box');
+  box.classList.add('show');
+  if (currentType === 'qr') {
+    const val = document.getElementById('qr-input').value.trim();
+    if (!val) { alert('Ingresa algún dato para el QR'); return; }
+    const size = parseInt(document.getElementById('qr-size').value) || 200;
+    const color = document.getElementById('qr-color').value;
+    const out = document.getElementById('qr-output');
+    out.innerHTML = '';
+    document.getElementById('barcode-output').style.display = 'none';
+    document.getElementById('result-title').textContent = '🎉 ¡QR generado!';
+    new QRCode(out, { text: val, width: size, height: size, colorDark: color, colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+  } else {
+    const val = document.getElementById('bar-input').value.trim();
+    if (!val) { alert('Ingresa algún dato para el código de barras'); return; }
+    const fmt = document.getElementById('bar-format').value;
+    const color = document.getElementById('bar-color').value;
+    const showTxt = document.getElementById('bar-text').checked;
+    const svg = document.getElementById('barcode-output');
+    svg.style.display = 'block';
+    document.getElementById('qr-output').innerHTML = '';
+    document.getElementById('result-title').textContent = '🎉 ¡Código de barras generado!';
+    try {
+      JsBarcode(svg, val, { format: fmt, lineColor: color, width: 2, height: 80, displayValue: showTxt, fontSize: 14, margin: 10 });
+    } catch(e) {
+      alert('Error: verifica que el dato sea compatible con el formato seleccionado.\n' + e.message);
+    }
+  }
+}
+
+function downloadCode() {
+  if (currentType === 'qr') {
+    const canvas = document.querySelector('#qr-output canvas') || document.querySelector('#qr-output img');
+    if (!canvas) return;
+    let url;
+    if (canvas.tagName === 'CANVAS') url = canvas.toDataURL('image/png');
+    else url = canvas.src;
+    const a = document.createElement('a'); a.href = url; a.download = 'codigo-qr.png'; a.click();
+  } else {
+    const svg = document.getElementById('barcode-output');
+    const xml = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([xml], {type:'image/svg+xml'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'codigo-barras.svg'; a.click();
+    URL.revokeObjectURL(url);
+  }
+}
+
+function toggleScan() {
+  if (!scanning) startScan(); else stopScan();
+}
+
+function startScan() {
+  scanning = true;
+  document.getElementById('scan-btn').style.display = 'none';
+  document.getElementById('stop-btn').style.display = 'block';
+  scanner = new Html5Qrcode('reader');
+  const cfg = { fps: 10, qrbox: { width: 250, height: 250 } };
+  scanner.start({ facingMode: 'environment' }, cfg, onScanSuccess, () => {}).catch(err => {
+    scanner.start({ facingMode: 'user' }, cfg, onScanSuccess, () => {}).catch(() => {
+      alert('No se pudo acceder a la cámara. Prueba con el modo Imagen.');
+      stopScan();
+    });
+  });
+}
+
+function stopScan() {
+  if (scanner && scanning) {
+    scanner.stop().catch(() => {});
+    scanner = null;
+  }
+  scanning = false;
+  document.getElementById('scan-btn').style.display = 'block';
+  document.getElementById('stop-btn').style.display = 'none';
+  document.getElementById('reader').innerHTML = '';
+}
+
+function onScanSuccess(decoded) {
+  document.getElementById('scan-text').textContent = decoded;
+  document.getElementById('scan-result').classList.add('show');
+  stopScan();
+}
+
+function readFromImage(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const scanner2 = new Html5Qrcode('reader-img-temp');
+  if (!document.getElementById('reader-img-temp')) {
+    const d = document.createElement('div'); d.id = 'reader-img-temp'; d.style.display = 'none';
+    document.body.appendChild(d);
+  }
+  const s = new Html5Qrcode('reader-img-temp');
+  s.scanFile(file, true).then(decoded => {
+    document.getElementById('scan-text').textContent = decoded;
+    document.getElementById('scan-result').classList.add('show');
+  }).catch(() => {
+    alert('No se detectó ningún código en la imagen. Intenta con otra foto.');
+  });
+}
+
+function copyResult() {
+  const txt = document.getElementById('scan-text').textContent;
+  navigator.clipboard.writeText(txt).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✅ ¡Copiado!';
+    setTimeout(() => btn.textContent = '📋 Copiar', 2000);
+  });
+}
+</script>
+</body>
+</html>
